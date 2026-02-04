@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function addMessage(text, type = "bot") {
         const msg = document.createElement("div");
         msg.className = `msg ${type}`;
-        msg.innerHTML = text;
+        msg.innerHTML = typeof text  == "object" ? JSON.stringify(text) : text;
         messages.appendChild(msg);
         msg.scrollIntoView({ behavior: "smooth" });
     }
