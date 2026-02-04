@@ -1,17 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
     if (document.getElementById("chatbot-fab")) return;
 
-    // Floating button
+
     const fab = document.createElement("div");
     fab.id = "chatbot-fab";
-    fab.innerHTML = "✨";
+    fab.innerHTML = "🤖";
 
-    // Chat window
     const chatWindow = document.createElement("div");
     chatWindow.id = "chatbot-window";
     chatWindow.innerHTML = `
         <div id="chatbot-header">
-            <div class="title">Kindatech AI</div>
+            <div class="title">Kindatech Assistant</div>
             <span id="chatbot-close">✕</span>
         </div>
 
@@ -23,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>
 
         <div id="chatbot-input">
+         <button id="chatbot-attachment">📎</button>
             <input id="chatbot-text" type="text" placeholder="Ask me anything…" />
             <button id="chatbot-send">➤</button>
         </div>
@@ -57,8 +57,11 @@ document.addEventListener("DOMContentLoaded", function () {
         input.value = "";
 
         // Fake AI response (replace with backend call)
+
+
+        
         setTimeout(() => {
-            addMessage("🤖 I’m thinking… AI response goes here.", "bot");
+            addMessage("🤖 I’m thinking… AI response will go here.");
         }, 600);
     }
 

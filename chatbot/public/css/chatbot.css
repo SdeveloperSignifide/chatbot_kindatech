@@ -85,7 +85,7 @@
 }
 
 .msg.user {
-    background: linear-gradient(135deg, #4f8cff, #6b5cff);
+    background: linear-gradient(135deg, #4f8cff, #0c7e45);
     color: white;
     margin-left: auto;
     border-bottom-right-radius: 4px;
