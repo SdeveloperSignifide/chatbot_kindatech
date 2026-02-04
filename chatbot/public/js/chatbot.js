@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     if (document.getElementById("chatbot-fab")) return;
 
-
     const fab = document.createElement("div");
     fab.id = "chatbot-fab";
     fab.innerHTML = "🤖";
@@ -16,13 +15,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         <div id="chatbot-messages">
             <div class="msg bot">
-                Hi 👋 I’m your Kindatech AI assistant.<br/>
+                Hi 👋 I’m your Kindatech AI assistant. I can help you with anything related to Kindatech.<br/>
                 How can I help you today?
             </div>
         </div>
 
         <div id="chatbot-input">
-         <button id="chatbot-attachment">📎</button>
+            <button id="chatbot-attachment">📎</button>
             <input id="chatbot-text" type="text" placeholder="Ask me anything…" />
             <button id="chatbot-send">➤</button>
         </div>
@@ -31,45 +30,71 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.appendChild(fab);
     document.body.appendChild(chatWindow);
 
-    // Toggle open
+    const messages = document.getElementById("chatbot-messages");
+    const input = document.getElementById("chatbot-text");
+    const sendBtn = document.getElementById("chatbot-send");
+
     fab.onclick = () => {
         chatWindow.classList.toggle("open");
-        document.getElementById("chatbot-text").focus();
+        input.focus();
     };
 
     document.getElementById("chatbot-close").onclick = () => {
         chatWindow.classList.remove("open");
     };
 
-    document.getElementById("chatbot-send").onclick = sendMessage;
+    sendBtn.onclick = sendMessage;
 
-    document.getElementById("chatbot-text").addEventListener("keypress", e => {
+    input.addEventListener("keypress", e => {
         if (e.key === "Enter") sendMessage();
     });
 
-    function sendMessage() {
-        const input = document.getElementById("chatbot-text");
-        const messages = document.getElementById("chatbot-messages");
+    async function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
 
-        if (!input.value.trim()) return;
-
-        addMessage(input.value, "user");
+        addMessage(text, "user");
         input.value = "";
+        setLoading(true);
 
-        // Fake AI response (replace with backend call)
-
-
-        
-        setTimeout(() => {
-            addMessage("🤖 I’m thinking… AI response will go here.");
-        }, 600);
+        try {
+            const chatbotReply = await sendUserInput(text);
+            addMessage(chatbotReply, "bot");
+        } catch (err) {
+            console.error(err);
+            addMessage("Something went wrong!", "bot");
+        } finally {
+            setLoading(false);
+        }
     }
 
-    function addMessage(text, type) {
+    async function sendUserInput(message) {
+        const response = await fetch("/api/method/chatbot.api.chatbot_api.receive_user_input", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Frappe-CSRF-Token": frappe.csrf_token
+            },
+            body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+            throw new Error("The request failed");
+        }
+
+        const data = await response.json(); 
+        return data.message || "No response from AI";
+    }
+
+    function addMessage(text, type = "bot") {
         const msg = document.createElement("div");
         msg.className = `msg ${type}`;
         msg.innerHTML = text;
-        document.getElementById("chatbot-messages").appendChild(msg);
+        messages.appendChild(msg);
         msg.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function setLoading(loading) {
+        sendBtn.disabled = loading;
     }
 });
