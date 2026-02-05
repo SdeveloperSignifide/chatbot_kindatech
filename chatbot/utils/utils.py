@@ -2,6 +2,7 @@ import frappe
 import html
 import re
 import json
+import os
 from typing import Dict, Any, List
 
 
@@ -29,6 +30,7 @@ def sanitize_user_input(message: str) -> str:
 
 
 CACHE_KEY = "chatbot_conversation_context"
+
 def get_user_context(user: str) -> dict:
     """
     Retrieve user context from cache and deserialize
@@ -38,6 +40,61 @@ def get_user_context(user: str) -> dict:
         return json.loads(cached)
     return {}
 
+
+
+def preprocess_text(text: str) -> str:
+    """
+    Clean and normalize user input.
+    """
+    return text.lower().strip()
+
+
+
+def normalize_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^a-z\s]", "", text)  # keep only letters and spaces
+    text = re.sub(r"\s+", " ", text)      # collapse multiple spaces
+    return text.strip()
+
+
+def check_short_keywords(text: str) -> str | None:
+    """
+    Detects simple intents like greetings, thanks, goodbye.
+    Uses fuzzy matching (keyword is in input) rather than exact match.
+    ERP/business intents (like inventory_query, invoice_query) 
+    are now handled dynamically by the ML model.
+    """
+
+    keywords = {
+        "greeting": ["hello", "hi", "hey", "greetings", "good morning", "good afternoon"],
+        "thanks": ["thanks", "thank you", "thx", "appreciate it"],
+        "goodbye": ["bye", "goodbye", "see you", "see ya"]
+    }
+
+    text_clean = normalize_text(text)
+    print(f"[DEBUG] Checking keywords for: '{text_clean}'")  
+
+    for intent, words in keywords.items():
+        for w in words:
+            if w in text_clean:  
+                print(f"[DEBUG] Matched intent '{intent}' with keyword '{w}'")
+                return intent
+
+    return None
+
+
+
+
+def predict_intent_ml(model, text: str) -> tuple[str, float]:
+    """
+    Predict intent using ML model and return (intent, confidence).
+    """
+    probs = model.predict_proba([text])[0]
+    labels = model.classes_
+    best_idx = probs.argmax()
+    return labels[best_idx], probs[best_idx]
+
+
 def set_user_context(user: str, context: dict):
     key = f"{CACHE_KEY}:{user}"
     serialized = json.dumps(context)    
@@ -45,33 +102,72 @@ def set_user_context(user: str, context: dict):
     frappe.cache().expire(key, 3600)  
 
 
-def user_intent(clean_input: str, context: Dict[str, Any]) -> str:
-    """
-    Determines user intent using pattern matching and context.
-    Can later integrate ML/NLP models here.
-    """
-    text = clean_input.lower()
+from typing import Dict, Any
+import joblib
+from functools import lru_cache
 
-    # Basic intent patterns (can be replaced with ML model prediction)
-    patterns = {
-        "greeting": r"\b(hello|hi|hey|greetings)\b",
-        "help_request": r"\b(help|support|assist|guide|how to)\b",
-        "invoice_query": r"\b(invoice|bill|payment|receipt)\b",
-        "product_query": r"\b(product|item|stock|price|availability)\b",
-        "thanks": r"\b(thank|thanks|thank you)\b",
-        "goodbye": r"\b(bye|goodbye|see you)\b",
-    }
+CONFIDENCE_THRESHOLD = 0.5  # tweakable
 
-    for intent, pattern in patterns.items():
-        if re.search(pattern, text):
-            return intent
+import os
+import re
+import joblib
+from functools import lru_cache
+from typing import Dict, Any
 
-    # Fallback: check previous context for follow-up questions
-    last_intent = context.get("last_intent")
-    if last_intent in ["invoice_query", "product_query"]:
-        return last_intent
+CONFIDENCE_THRESHOLD <= 0.5  
 
-    return "unknown"
+@lru_cache(maxsize=1)
+def load_intent_model():
+    base_dir = os.path.dirname(os.path.abspath(__file__))  
+    model_path = os.path.join(base_dir, "../ml/intent_model.joblib")
+    model_path = os.path.abspath(model_path)
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Intent model not found at {model_path}")
+
+    return joblib.load(model_path)
+
+
+def preprocess_input(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9\s]", "", text)  
+    text = re.sub(r"\s+", " ", text)  
+    return text.strip()
+
+
+def user_intent(clean_input: str, context: dict) -> str:
+    model = load_intent_model()
+
+    text = preprocess_input(clean_input)
+    print("The user text is ", text)
+
+    # 1️⃣ Check short keywords first
+    intent = check_short_keywords(text)
+    print(f"[DEBUG] Keyword intent: {intent}")
+    print(model.predict([text]))
+    print(model.predict_proba([text]))
+
+    if intent:
+        return intent
+
+    probs = model.predict_proba([text])[0]
+    labels = model.classes_
+    best_idx = probs.argmax()
+    intent = labels[best_idx]
+    confidence = probs[best_idx]
+
+    # 3️⃣ Confidence check
+    if confidence < CONFIDENCE_THRESHOLD:
+        last_intent = context.get("last_intent")
+        if last_intent not in ["greeting", "thanks", "goodbye"]:
+            return last_intent
+        return "unknown"
+
+
+    return intent
+
+
+
 
 def conversation(clean_input: str, user: str) -> str:
     """
@@ -84,7 +180,8 @@ def conversation(clean_input: str, user: str) -> str:
     context = get_user_context(user)
     intent = user_intent(clean_input, context)
 
-    # Define production-ready responses per intent
+    print("Hello the intent captured is", intent)
+
     responses = {
         "greeting": "Hello 👋! I’m your Kindatech AI assistant. How can I help you today?",
         "help_request": (
@@ -104,3 +201,4 @@ def conversation(clean_input: str, user: str) -> str:
 
     return responses.get(intent, responses["unknown"])
     
+

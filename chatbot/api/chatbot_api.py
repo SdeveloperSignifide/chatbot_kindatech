@@ -12,9 +12,6 @@ def receive_user_input(message):
     """
     user = frappe.session.user if frappe.session.user != "Guest" else "Guest"
     clean_input = sanitize_user_input(message)
-
-    # Get the conversation response
     reply = conversation(clean_input, user)
-
     return reply
 
