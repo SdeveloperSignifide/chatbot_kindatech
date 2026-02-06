@@ -1,6 +1,7 @@
 import frappe
 import html
 import re
+from .tools import get_deepseek_intent
 import json
 import os
 from typing import Dict, Any, List
@@ -84,7 +85,6 @@ def check_short_keywords(text: str) -> str | None:
 
 
 
-
 def predict_intent_ml(model, text: str) -> tuple[str, float]:
     """
     Predict intent using ML model and return (intent, confidence).
@@ -136,36 +136,29 @@ def preprocess_input(text: str) -> str:
 
 
 def user_intent(clean_input: str, context: dict) -> str:
-    model = load_intent_model()
-
+    """
+    Detect user intent using DeepSeek REST API.
+    """
     text = preprocess_input(clean_input)
-    print("The user text is ", text)
+    print("The user text is:", text)
 
     # 1️⃣ Check short keywords first
     intent = check_short_keywords(text)
-    print(f"[DEBUG] Keyword intent: {intent}")
-    print(model.predict([text]))
-    print(model.predict_proba([text]))
-
     if intent:
         return intent
 
-    probs = model.predict_proba([text])[0]
-    labels = model.classes_
-    best_idx = probs.argmax()
-    intent = labels[best_idx]
-    confidence = probs[best_idx]
+    # 2️⃣ Call DeepSeek API
+    prediction = get_deepseek_intent(text)
+    intent = prediction.get("label", "unknown")
+    confidence = prediction.get("score", 0.0)
 
-    # 3️⃣ Confidence check
-    if confidence < CONFIDENCE_THRESHOLD:
+    if confidence < 0.5:  # fallback if low confidence
         last_intent = context.get("last_intent")
         if last_intent not in ["greeting", "thanks", "goodbye"]:
             return last_intent
         return "unknown"
 
-
     return intent
-
 
 
 

@@ -73,7 +73,9 @@ document.addEventListener("DOMContentLoaded", function () {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Frappe-CSRF-Token": frappe.csrf_token
+                "Accept": "application/json",
+                "X-Frappe-CSRF-Token": frappe.csrf_token,
+                "Expect": ""   
             },
             body: JSON.stringify({ message })
         });
