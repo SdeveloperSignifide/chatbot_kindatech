@@ -1,42 +1,62 @@
 import frappe
-
 import requests
 
-def get_deepseek_intent(text: str) -> dict:
+def get_ai_reply(text: str, intent: str) -> str:
     """
-    Call DeepSeek REST API to get intent predictions.
-    Returns a dict: {'label': intent_name, 'score': confidence}
+    Generate AI response using DeepSeek based on detected intent.
+    Fetches the last Chatbot Settings record.
     """
-    settings = frappe.get_doc("Chatbot Settings")
-    api_key = settings.api_keys  # adjust if your fieldname is different
-    if not api_key:
-        frappe.throw("DeepSeek API key is not configured in Chatbot Settings")
+    settings_list = frappe.get_all(
+        "Chatbot Settings",
+        fields=["name", "api_keys"],
+        order_by="creation desc",
+        limit_page_length=1
+    )
 
-    url = "https://api.deepseek.ai/v1/intent"  # replace with actual DeepSeek endpoint
+    if not settings_list:
+        frappe.throw("No Chatbot Settings record found")
+
+    settings_name = settings_list[0].name
+    settings = frappe.get_doc("Chatbot Settings", settings_name)
+    api_key = settings.api_keys
+
+    if not api_key:
+        frappe.throw("DeepSeek API key not configured in the last Chatbot Settings record")
+
+    url = "https://api.deepseek.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
+
+    system_prompt = (
+        "You are Kindatech AI, an ERPNext assistant. "
+        f"The detected intent is: {intent}. "
+        "Respond professionally and helpfully."
+    )
+
     payload = {
-        "text": text
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 300
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=5)
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        print("Status Code:", response.status_code)
+        print("Response Text:", response.text)
         response.raise_for_status()
         data = response.json()
-
-        # Example response: {"predictions": [{"label": "invoice_query", "score": 0.93}]}
-        if "predictions" in data and data["predictions"]:
-            return data["predictions"][0]
-        return {"label": "unknown", "score": 0.0}
+        print("Response JSON:", data)
+        return data["choices"][0]["message"]["content"]
 
     except Exception as e:
-        frappe.log_error(f"DeepSeek API error: {str(e)}", "Chatbot DeepSeek")
-        return {"label": "unknown", "score": 0.0}
-
-
-
+        frappe.log_error(str(e), "DeepSeek Response Error")
+        return "Sorry, I'm experiencing an issue generating a response."
 
 
 def looks_like_inventory_question(text: str) -> bool:
