@@ -79,7 +79,6 @@ def check_short_keywords(text: str) -> str | None:
 
 
 
-
 def user_intent(clean_input: str, context: dict) -> str:
     """
     Detect intent. All greeting keywords return 'greeting' directly.
@@ -132,7 +131,6 @@ def conversation(clean_input: str, user: str) -> str:
         ]
         reply = random.choice(goodbye_replies)
     else:
-        # Non-greeting intents: call LLM
         reply = get_ai_reply(clean_input, intent)
 
     context["last_intent"] = intent
