@@ -6,7 +6,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "api_keys",
+  "api_key",
   "temperature",
   "max_tokens",
   "column_break_hcoi",
@@ -17,11 +17,6 @@
   "amended_from"
  ],
  "fields": [
-  {
-   "fieldname": "api_keys",
-   "fieldtype": "Data",
-   "label": "API Keys"
-  },
   {
    "fieldname": "temperature",
    "fieldtype": "Float",
@@ -40,7 +35,7 @@
    "fieldname": "model_provider",
    "fieldtype": "Select",
    "label": "Model Provider",
-   "options": "DeepSeek\nOpenAI\nGrok\nHuggingFace"
+   "options": "DeepSeek\nOpenAI\nGrok\nHuggingFace\nGroq"
   },
   {
    "fieldname": "api_url",
@@ -67,13 +62,17 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Data",
+   "label": "API Key"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2026-02-12 10:10:25.094311",
+ "modified": "2026-02-12 15:29:16.747617",
  "modified_by": "Administrator",
  "module": "chatbot",
  "name": "Chatbot Settings",
