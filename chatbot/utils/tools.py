@@ -12,6 +12,7 @@ def parse_ai_response(data: dict, provider: str) -> str:
         return choice.get("text", "")
     return str(choice)
 
+im good you ?
 
 def get_ai_reply(text: str, intent: str) -> str:
     settings_list = frappe.get_all(
@@ -96,5 +97,7 @@ def extract_product_candidate(text: str) -> str | None:
     words = text.split()
     candidates = [w for w in words if w not in stop_words]
     return " ".join(candidates) if candidates else None
+
+    
 
 

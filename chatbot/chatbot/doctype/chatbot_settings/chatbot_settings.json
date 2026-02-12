@@ -40,7 +40,7 @@
    "fieldname": "model_provider",
    "fieldtype": "Select",
    "label": "Model Provider",
-   "options": "DeepSeek\nOpenAI\nGrok AI\nHuggingFace"
+   "options": "DeepSeek\nOpenAI\nGrok\nHuggingFace"
   },
   {
    "fieldname": "api_url",
@@ -73,7 +73,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-11 17:56:41.568215",
+ "modified": "2026-02-12 10:10:25.094311",
  "modified_by": "Administrator",
  "module": "chatbot",
  "name": "Chatbot Settings",
