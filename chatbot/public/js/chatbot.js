@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const attachmentBtn = document.getElementById("chatbot-attachment");
     const fileInput = document.getElementById("chatbot-file");
 
-    /* ---------------- SESSION STORAGE ---------------- */
+    /* ---------------- STORAGE ---------------- */
 
     function saveSession() {
         const sessionData = {
@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.removeItem(STORAGE_KEY);
     }
 
-    /* ---------------- SESSION TIMER ---------------- */
+    /* ---------------- TIMER ---------------- */
 
     function startSessionTimer() {
         clearTimeout(sessionTimer);
@@ -100,11 +100,12 @@ document.addEventListener("DOMContentLoaded", function () {
         fileInput.value = "";
 
         chatWindow.classList.remove("open");
+
         clearSessionStorage();
         clearTimeout(sessionTimer);
     }
 
-    /* ---------------- INITIAL LOAD ---------------- */
+    /* ---------------- INIT ---------------- */
 
     const restored = loadSession();
 
@@ -152,7 +153,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     sendBtn.onclick = sendMessage;
 
-    /* ---------------- ATTACHMENT SUMMARY ---------------- */
+    /* ---------------- ATTACHMENTS ---------------- */
 
     function updateAttachmentsSummary() {
         if (attachments.length === 0) {
@@ -168,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
             `Attachments (${attachments.length}): ${names.join(", ")}`;
     }
 
-    /* ---------------- MESSAGE HANDLING ---------------- */
+    /* ---------------- MESSAGE LOGIC ---------------- */
 
     async function sendMessage() {
         const text = input.value.trim();
@@ -182,6 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
             addMessage(`📎 ${file.name}`, "user")
         );
 
+        const filesToSend = [...attachments];
         attachments = [];
         updateAttachmentsSummary();
         input.value = "";
@@ -190,9 +192,18 @@ document.addEventListener("DOMContentLoaded", function () {
         setLoading(true);
 
         try {
-            const chatbotReply = await sendUserInput(text);
+            let chatbotReply;
+
+            if (filesToSend.length > 0) {
+                chatbotReply = await sendFilesWithText(filesToSend, text);
+            } else {
+                chatbotReply = await sendUserInput(text);
+            }
+
             addMessage(chatbotReply, "bot");
+
         } catch (err) {
+            console.error(err);
             addMessage("Something went wrong!", "bot");
         } finally {
             setLoading(false);
@@ -200,18 +211,42 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function sendUserInput(message) {
-        const response = await fetch("/api/method/chatbot.api.chatbot_api.receive_user_input", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Frappe-CSRF-Token": frappe.csrf_token
-            },
-            body: JSON.stringify({ message })
-        });
+        const response = await fetch(
+            "/api/method/chatbot.api.chatbot_api.receive_user_input",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Frappe-CSRF-Token": frappe.csrf_token
+                },
+                body: JSON.stringify({ message })
+            }
+        );
 
         if (!response.ok) throw new Error("Request failed");
         const data = await response.json();
         return data.message || "No response from AI";
+    }
+
+    async function sendFilesWithText(files, text) {
+        const formData = new FormData();
+        files.forEach(file => formData.append("files", file));
+        formData.append("text", text);
+
+        const response = await fetch(
+            "/api/method/chatbot.api.chatbot_api.upload_file_with_text",
+            {
+                method: "POST",
+                headers: {
+                    "X-Frappe-CSRF-Token": frappe.csrf_token
+                },
+                body: formData
+            }
+        );
+
+        if (!response.ok) throw new Error("Request failed");
+        const data = await response.json();
+        return data.message || "Files processed successfully!";
     }
 
     function addMessage(text, type = "bot") {
