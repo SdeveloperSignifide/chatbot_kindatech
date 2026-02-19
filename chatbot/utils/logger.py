@@ -1,17 +1,11 @@
 import frappe
 
+logger = frappe.logger("chatbot", allow_site=True)
+
 def log_info(message):
-    frappe.logger("chatbot").info(message)
+    # Log to file only (safe)
+    logger.info(str(message)[:2000])
 
-def log_error(message):
-    frappe.logger("chatbot").error(message)
-
-
-
-def log_info(message: str):
-    print("[INFO]", message)
-    frappe.log_error(message, "Chatbot Info")
-
-def log_error(message: str):
-    print("[ERROR]", message)
-    frappe.log_error(message, "Chatbot Error")
+def log_error(message, title="Chatbot Error"):
+    # Only real errors go to Error Log
+    frappe.log_error(str(message)[:5000], title)

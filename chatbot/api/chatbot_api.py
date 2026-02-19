@@ -74,33 +74,53 @@ def parse_file_content(filename, content_bytes):
             text = "\n".join([para.text for para in doc.paragraphs])
             return text if text.strip() else None
 
-        # Images (OCR)
         if ext in [".png", ".jpg", ".jpeg"]:
             from PIL import Image
             import pytesseract
             f = io.BytesIO(content_bytes)
-            img = Image.open(f)
+            img = Image.open(f).convert("L")  # grayscale improves OCR
             text = pytesseract.image_to_string(img)
-            return text if text.strip() else None
+            return text.strip() if text.strip() else None
+
 
         return None
 
     except Exception as e:
         frappe.log_error(message=str(e), title=f"Chatbot File Parsing Error: {filename}")
         return None
+    
 @frappe.whitelist(allow_guest=True)
 def upload_file_with_text():
     uploaded_file = frappe.request.files.get("file")
-    text = frappe.form_dict.get("text", "")
+    text = frappe.form_dict.get("text", "").strip()
 
     if not uploaded_file and not text:
         return {"message": "No file or text provided."}
 
     parsed_text = ""
+
     if uploaded_file:
         content_bytes = uploaded_file.read()
-        parsed_text = parse_file_content(uploaded_file.filename, content_bytes) or ""
+        parsed_text = parse_file_content(
+            uploaded_file.filename,
+            content_bytes
+        ) or ""
 
-    combined_text = text + "\n" + parsed_text
+    # Limit OCR size (VERY IMPORTANT)
+    parsed_text = parsed_text[:6000]
+
+    if parsed_text:
+        combined_text = f"""
+            User Instruction:
+            {text}
+
+            Extracted File Content:
+            {parsed_text}
+
+            Please analyze the file content and respond according to the user's instruction.
+            """
+    else:
+        combined_text = text
+
     reply = process_message(combined_text)
-    return  reply
+    return reply

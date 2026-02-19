@@ -3,9 +3,13 @@ from chatbot.utils.logger import log_info
 
 
 def process_message(message: str):
-    log_info(f"User message: {message}")
+    log_info(f"User message length: {len(message)}")
+
     reply = route(message)
-    log_info(f"Bot reply: {reply}")
+
+    # DO NOT log full reply
+    log_info(f"Bot reply length: {len(reply)}")
+    # Optional preview only
+    log_info(f"Bot reply preview: {reply[:300]}")
+
     return reply
-
-

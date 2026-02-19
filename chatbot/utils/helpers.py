@@ -17,3 +17,9 @@ def normalize_text(text: str) -> str:
 
 def preprocess_input(text: str) -> str:
     return normalize_text(text)
+
+    
+def limit_tokens(text: str, max_chars=8000):
+    if not text:
+        return ""
+    return text[:max_chars]
