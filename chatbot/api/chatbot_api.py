@@ -14,13 +14,15 @@ def receive_user_input(message: str):
     reply = process_message(message)
     return reply
 
+
+
 @frappe.whitelist(allow_guest=True)
 def upload_file():
     """
     Handle file upload in memory, parse content, and return chatbot response.
     Supports: txt, csv, pdf, docx, png, jpg, jpeg.
     """
-    uploaded_file = frappe.request.files.get("file")
+    uploaded_file = frappe.request.files.get("files")
     if not uploaded_file:
         return "No file uploaded."
 
@@ -40,9 +42,12 @@ def upload_file():
         return "Something went wrong while processing the file."
 
 
+
+
 def parse_file_content(filename, content_bytes):
     """
     Parse text from uploaded files in memory.
+    Supports: txt, csv, pdf, docx, png, jpg, jpeg.
     """
     ext = os.path.splitext(filename)[1].lower()
 
@@ -57,7 +62,7 @@ def parse_file_content(filename, content_bytes):
             f = io.StringIO(content_bytes.decode("utf-8", errors="ignore"))
             reader = csv.reader(f)
             return "\n".join([", ".join(row) for row in reader])
-
+        
         # PDF
         if ext == ".pdf":
             import PyPDF2
@@ -66,7 +71,7 @@ def parse_file_content(filename, content_bytes):
             text = "\n".join([page.extract_text() or "" for page in reader.pages])
             return text if text.strip() else None
 
-        # Word document
+        # Word DOCX
         if ext == ".docx":
             import docx
             f = io.BytesIO(content_bytes)
@@ -74,53 +79,69 @@ def parse_file_content(filename, content_bytes):
             text = "\n".join([para.text for para in doc.paragraphs])
             return text if text.strip() else None
 
+        # Image files
         if ext in [".png", ".jpg", ".jpeg"]:
             from PIL import Image
-            import pytesseract
-            f = io.BytesIO(content_bytes)
-            img = Image.open(f).convert("L")  # grayscale improves OCR
-            text = pytesseract.image_to_string(img)
-            return text.strip() if text.strip() else None
+            import easyocr
 
+            f = io.BytesIO(content_bytes)
+            img = Image.open(f).convert("RGB")  # keep RGB
+
+            reader = easyocr.Reader(['en'], gpu=False)  # CPU mode
+            result = reader.readtext(np.array(img))  # returns list of (bbox, text, confidence)
+
+            # Join all recognized text
+            text = "\n".join([r[1] for r in result])
+            return text.strip() if text.strip() else None
 
         return None
 
     except Exception as e:
         frappe.log_error(message=str(e), title=f"Chatbot File Parsing Error: {filename}")
         return None
-    
+
+
+
+
 @frappe.whitelist(allow_guest=True)
 def upload_file_with_text():
-    uploaded_file = frappe.request.files.get("file")
+
+    uploaded_files = frappe.request.files.getlist("files")
     text = frappe.form_dict.get("text", "").strip()
 
-    if not uploaded_file and not text:
+    if not uploaded_files and not text:
         return {"message": "No file or text provided."}
 
-    parsed_text = ""
+    parsed_texts = []
 
-    if uploaded_file:
+    for uploaded_file in uploaded_files:
         content_bytes = uploaded_file.read()
-        parsed_text = parse_file_content(
+        parsed = parse_file_content(
             uploaded_file.filename,
             content_bytes
-        ) or ""
+        )
+        if parsed:
+            parsed_texts.append(parsed[:4000])
 
-    # Limit OCR size (VERY IMPORTANT)
-    parsed_text = parsed_text[:6000]
+    combined_file_text = "\n\n".join(parsed_texts)
+    print("The kinuthia combined text is ", text)
 
-    if parsed_text:
+    if combined_file_text:
         combined_text = f"""
             User Instruction:
             {text}
 
             Extracted File Content:
-            {parsed_text}
+            {combined_file_text}
 
             Please analyze the file content and respond according to the user's instruction.
             """
     else:
+
         combined_text = text
+       
 
     reply = process_message(combined_text)
+    print("The reply is ", combined_text)
+
     return reply

@@ -7,9 +7,7 @@ def process_message(message: str):
 
     reply = route(message)
 
-    # DO NOT log full reply
     log_info(f"Bot reply length: {len(reply)}")
-    # Optional preview only
     log_info(f"Bot reply preview: {reply[:300]}")
 
     return reply
