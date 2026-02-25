@@ -1,7 +1,15 @@
 import frappe
-import os
+import frappe
 import io
+from PIL import Image
+from pypdf import PdfReader
+import docx2txt
 from chatbot.core.engine import process_message
+
+MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_CHUNK = 4000  # characters per file chunk
+import io
+from chatbot.core.engine import process_message,extract_text_from_image
 
 @frappe.whitelist(allow_guest=True)
 def receive_user_input(message: str):
@@ -44,71 +52,70 @@ def upload_file():
 
 
 def parse_file_content(filename, content_bytes):
-    import os
-    import io
-
-    ext = os.path.splitext(filename)[1].lower()
+    """
+    Parse text from uploaded files in memory.
+    Supports txt, csv, pdf, docx, png, jpg, jpeg.
+    """
+    ext = filename.lower().split('.')[-1]
 
     try:
-        if ext in [".txt", ".csv"]:
+        if ext in ["txt", "csv"]:
             return content_bytes.decode("utf-8", errors="ignore")
 
-        if ext == ".pdf":
-            from pypdf import PdfReader
+        if ext == "pdf":
             reader = PdfReader(io.BytesIO(content_bytes))
             return "\n".join(page.extract_text() or "" for page in reader.pages)
 
-        if ext == ".docx":
-            import docx2txt
+        if ext == "docx":
             return docx2txt.process(io.BytesIO(content_bytes))
 
-        if ext in [".png", ".jpg", ".jpeg"]:
-            from PIL import Image
-            import pytesseract
-            img = Image.open(io.BytesIO(content_bytes))
-            return pytesseract.image_to_string(img)
+        if ext in ["png", "jpg", "jpeg"]:
+            parsed_text = extract_text_from_image(content_bytes)
+            return parsed_text
 
         return None
-
-    except Exception:
+    except Exception as e:
+        frappe.log_error(str(e), f"File Parsing Error: {filename}")
         return None
+
+
+
 
 @frappe.whitelist(allow_guest=True)
 def upload_file_with_text():
-
+    """
+    Handles file uploads + user instructions.
+    Returns chatbot response.
+    """
     uploaded_files = frappe.request.files.getlist("files")
-    text = frappe.form_dict.get("text", "").strip()
+    user_text = frappe.form_dict.get("text", "").strip()
 
-    if not uploaded_files and not text:
+    if not uploaded_files and not user_text:
         return {"message": "No file or text provided."}
 
     parsed_texts = []
-
     for uploaded_file in uploaded_files:
+        if uploaded_file.content_length > MAX_FILE_BYTES:
+            return {"message": f"File {uploaded_file.filename} is too large."}
+
         content_bytes = uploaded_file.read()
-        parsed = parse_file_content(
-            uploaded_file.filename,
-            content_bytes
-        )
+        parsed = parse_file_content(uploaded_file.filename, content_bytes)
         if parsed:
-            parsed_texts.append(parsed[:4000])
+            parsed_texts.append(parsed[:MAX_CHUNK])
 
     combined_file_text = "\n\n".join(parsed_texts)
-    print("The kinuthia combined text is ", text)
+
     if combined_file_text:
         combined_text = f"""
-            User Instruction:
-            {text}
+        User Instruction:
+        {user_text}
 
-            Extracted File Content:
-            {combined_file_text}
+        Extracted File Content:
+        {combined_file_text}
 
-            Please analyze the file content and respond according to the user's instruction.
-            """
+        Please analyze the file content and respond according to the user's instruction.
+        """
     else:
-        combined_text = text  
+        combined_text = user_text or "No text or readable content found."
     reply = process_message(combined_text)
-    print("The combined text is ", combined_text)
-    print("The reply is ", reply)
-
     return reply
