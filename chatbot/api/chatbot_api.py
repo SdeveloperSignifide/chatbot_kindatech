@@ -43,65 +43,35 @@ def upload_file():
 
 
 
-
 def parse_file_content(filename, content_bytes):
-    """
-    Parse text from uploaded files in memory.
-    Supports: txt, csv, pdf, docx, png, jpg, jpeg.
-    """
+    import os
+    import io
+
     ext = os.path.splitext(filename)[1].lower()
 
     try:
-        # Plain text
-        if ext == ".txt":
+        if ext in [".txt", ".csv"]:
             return content_bytes.decode("utf-8", errors="ignore")
 
-        # CSV
-        if ext == ".csv":
-            import csv
-            f = io.StringIO(content_bytes.decode("utf-8", errors="ignore"))
-            reader = csv.reader(f)
-            return "\n".join([", ".join(row) for row in reader])
-        
-        # PDF
         if ext == ".pdf":
-            import PyPDF2
-            f = io.BytesIO(content_bytes)
-            reader = PyPDF2.PdfReader(f)
-            text = "\n".join([page.extract_text() or "" for page in reader.pages])
-            return text if text.strip() else None
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(content_bytes))
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
 
-        # Word DOCX
         if ext == ".docx":
-            import docx
-            f = io.BytesIO(content_bytes)
-            doc = docx.Document(f)
-            text = "\n".join([para.text for para in doc.paragraphs])
-            return text if text.strip() else None
+            import docx2txt
+            return docx2txt.process(io.BytesIO(content_bytes))
 
-        # Image files
         if ext in [".png", ".jpg", ".jpeg"]:
             from PIL import Image
-            import easyocr
-
-            f = io.BytesIO(content_bytes)
-            img = Image.open(f).convert("RGB")  # keep RGB
-
-            reader = easyocr.Reader(['en'], gpu=False)  # CPU mode
-            result = reader.readtext(np.array(img))  # returns list of (bbox, text, confidence)
-
-            # Join all recognized text
-            text = "\n".join([r[1] for r in result])
-            return text.strip() if text.strip() else None
+            import pytesseract
+            img = Image.open(io.BytesIO(content_bytes))
+            return pytesseract.image_to_string(img)
 
         return None
 
-    except Exception as e:
-        frappe.log_error(message=str(e), title=f"Chatbot File Parsing Error: {filename}")
+    except Exception:
         return None
-
-
-
 
 @frappe.whitelist(allow_guest=True)
 def upload_file_with_text():
@@ -125,7 +95,6 @@ def upload_file_with_text():
 
     combined_file_text = "\n\n".join(parsed_texts)
     print("The kinuthia combined text is ", text)
-
     if combined_file_text:
         combined_text = f"""
             User Instruction:
@@ -137,11 +106,9 @@ def upload_file_with_text():
             Please analyze the file content and respond according to the user's instruction.
             """
     else:
-
-        combined_text = text
-       
-
+        combined_text = text  
     reply = process_message(combined_text)
-    print("The reply is ", combined_text)
+    print("The combined text is ", combined_text)
+    print("The reply is ", reply)
 
     return reply
