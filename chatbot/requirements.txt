@@ -1,3 +1,6 @@
-PyPDF2
-docx
-markdown
+docx2txt==0.9
+Markdown==3.10.2
+Pillow==12.1.1
+pypdf==6.8.0
+pytesseract==0.3.13
+Requests==2.32.5

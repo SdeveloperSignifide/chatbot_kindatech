@@ -51,13 +51,13 @@ def upload_file():
 
 
 
+
 def parse_file_content(filename, content_bytes):
     """
     Parse text from uploaded files in memory.
     Supports txt, csv, pdf, docx, png, jpg, jpeg.
     """
     ext = filename.lower().split('.')[-1]
-
     try:
         if ext in ["txt", "csv"]:
             return content_bytes.decode("utf-8", errors="ignore")
@@ -77,8 +77,6 @@ def parse_file_content(filename, content_bytes):
     except Exception as e:
         frappe.log_error(str(e), f"File Parsing Error: {filename}")
         return None
-
-
 
 
 @frappe.whitelist(allow_guest=True)
