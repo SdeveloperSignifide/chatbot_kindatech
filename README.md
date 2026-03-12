@@ -212,3 +212,6 @@ For support and questions:
 - Document processing capabilities
 - Web interface and API endpoints
 - Conversation management system
+<img width="1444" height="839" alt="Screenshot from 2026-03-12 13-01-36" src="https://github.com/user-attachments/assets/294f6447-7eed-4716-9c2e-4551efa15752" />
+<img width="1444" height="839" alt="Screenshot from 2026-03-12 13-00-41" src="https://github.com/user-attachments/assets/d7c65585-4afc-4cbf-9cdf-2c0b2d84c02b" />
+<img width="865" height="875" alt="Screenshot from 2026-03-12 13-06-52" src="https://github.com/user-attachments/assets/0d7ab873-46cb-4a1e-960d-7135f3929155" />
